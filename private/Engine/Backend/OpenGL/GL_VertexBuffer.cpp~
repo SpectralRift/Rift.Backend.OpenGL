@@ -1,0 +1,167 @@
+#include <stdexcept>
+#include <cstdio>
+
+#include <Engine/GLHeader.hpp>
+
+#include <Engine/Backend/OpenGL/GL_VertexBuffer.hpp>
+
+namespace engine::backend::ogl {
+    static unsigned int GL_VertexBuffer_CurrentBoundVAO = 0;
+
+    bool GLVertexBuffer::Create() {
+        glGenVertexArrays(1, &m_VaoHandle);
+        glGenBuffers(1, &m_VboHandle);
+        return m_VaoHandle != 0 && m_VboHandle != 0;
+    }
+
+    void GLVertexBuffer::Destroy() {
+        if(GL_VertexBuffer_CurrentBoundVAO == m_VaoHandle) {
+            Unbind();
+        }
+
+        if (m_VboHandle) {
+            glDeleteBuffers(1, &m_VboHandle);
+            m_VboHandle = 0;
+        }
+        if (m_VaoHandle) {
+            glDeleteVertexArrays(1, &m_VaoHandle);
+            m_VaoHandle = 0;
+        }
+    }
+
+    void GLVertexBuffer::Bind() {
+        // if it didn't get created, then just do it now.
+        if(m_VaoHandle == 0 || m_VboHandle == 0) {
+            Create();
+        }
+
+        // make sure we aren't binding the same VAO many times
+        if(GL_VertexBuffer_CurrentBoundVAO == m_VaoHandle) {
+            return;
+        }
+
+        GL_VertexBuffer_CurrentBoundVAO = m_VaoHandle;
+
+        glBindVertexArray(m_VaoHandle);
+        glBindBuffer(GL_ARRAY_BUFFER, m_VboHandle);
+    }
+
+    void GLVertexBuffer::Unbind() {
+        GL_VertexBuffer_CurrentBoundVAO = 0;
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    GLenum GL_MapUsageType(core::runtime::graphics::BufferUsageHint usage) {
+        switch (usage) {
+            case core::runtime::graphics::BufferUsageHint::BUFFER_USAGE_HINT_STATIC:
+                return GL_STATIC_DRAW;
+            case core::runtime::graphics::BufferUsageHint::BUFFER_USAGE_HINT_DYNAMIC:
+                return GL_DYNAMIC_DRAW;
+            case core::runtime::graphics::BufferUsageHint::BUFFER_USAGE_HINT_STREAM:
+                return GL_STREAM_DRAW;
+            default:
+                printf("Unknown buffer usage hint. Defaulting to static!\n");
+                return GL_STATIC_DRAW;
+        }
+    }
+
+    GLenum GL_MapPrimitiveType(core::runtime::graphics::PrimitiveType prim) {
+        switch (prim) {
+            case core::runtime::graphics::PrimitiveType::PRIMITIVE_TYPE_TRIANGLES:
+                return GL_TRIANGLES;
+            case core::runtime::graphics::PrimitiveType::PRIMITIVE_TYPE_LINES:
+                return GL_LINES;
+            case core::runtime::graphics::PrimitiveType::PRIMITIVE_TYPE_POINTS:
+                return GL_POINTS;
+            default:
+                printf("Unknown primitive type. Defaulting to triangles!\n");
+                return GL_TRIANGLES;
+        }
+    }
+
+    void GLVertexBuffer::Draw() {
+        Bind();
+        glDrawArrays(GL_MapPrimitiveType(m_PrimType), 0, (GLsizei) m_VertexCount);
+    }
+
+    void GLVertexBuffer::Upload(
+            const std::vector<core::runtime::graphics::Vertex> &data,
+            core::runtime::graphics::PrimitiveType type,
+            core::runtime::graphics::BufferUsageHint usage
+    ) {
+        Bind();
+
+        m_VertexCount = data.size();
+        m_PrimType = type;
+        m_UsageHint = usage;
+
+        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(core::runtime::graphics::Vertex), data.data(),
+                     GL_MapUsageType(m_UsageHint));
+
+        // configure vertex attributes
+        glEnableVertexAttribArray(0); // position attribute
+        glVertexAttribPointer(
+                0,
+                3,
+                GL_FLOAT,
+                GL_FALSE,
+                sizeof(core::runtime::graphics::Vertex),
+                (void*)offsetof(core::runtime::graphics::Vertex, position)
+        );
+
+        glEnableVertexAttribArray(1); // UV attribute
+        glVertexAttribPointer(
+                1,
+                2,
+                GL_FLOAT,
+                GL_FALSE,
+                sizeof(core::runtime::graphics::Vertex),
+                (void*)offsetof(core::runtime::graphics::Vertex, uv)
+        );
+
+        glEnableVertexAttribArray(2); // normal attribute
+        glVertexAttribPointer(
+                2,
+                3,
+                GL_FLOAT,
+                GL_FALSE,
+                sizeof(core::runtime::graphics::Vertex),
+                (void*)offsetof(core::runtime::graphics::Vertex, normal)
+        );
+
+        glEnableVertexAttribArray(3); // color attribute (NORMALIZED)
+        glVertexAttribPointer(
+                3,
+                4,
+                GL_UNSIGNED_BYTE,
+                GL_TRUE,
+                sizeof(core::runtime::graphics::Vertex),
+                (void*)offsetof(core::runtime::graphics::Vertex, color)
+        );
+    }
+
+    size_t GLVertexBuffer::Size() {
+        GLint size = 0;
+        Bind();
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+        return static_cast<size_t>(size);
+    }
+
+    core::runtime::graphics::PrimitiveType GLVertexBuffer::GetPrimitiveType() {
+        // This is typically set externally; placeholder for integration.
+        throw std::runtime_error("PrimitiveType not implemented.");
+    }
+
+    std::vector<core::runtime::graphics::Vertex> GLVertexBuffer::Download() {
+        GLint size = static_cast<GLint>(Size());
+        std::vector<core::runtime::graphics::Vertex> buffer(size / sizeof(core::runtime::graphics::Vertex));
+
+        Bind();
+        glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, buffer.data());
+
+        return buffer;
+    }
+
+} // namespace engine::backend::ogl

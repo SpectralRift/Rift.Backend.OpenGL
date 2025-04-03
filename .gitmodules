@@ -1,0 +1,3 @@
+[submodule "third_party/glad2"]
+	path = third_party/glad2
+	url = https://github.com/Dav1dde/glad.git
