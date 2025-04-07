@@ -17,7 +17,7 @@ set(Rift_Backend_OpenGL_Sources
         private/Engine/Backend/OpenGL/GL_Texture.cpp
         private/Engine/Backend/OpenGL/GL_VertexBuffer.cpp)
 
-set(Rift_Backend_OpenGL_Libraries Rift_Core_Runtime)
+rift_resolve_module_libs("Rift.Core.Runtime" Rift_Backend_OpenGL_Libraries)
 
 if (GL_BACKEND_USE_EGL)
     list(APPEND Rift_Backend_OpenGL_Sources private/Engine/Platform/Universal/Graphics/U_EGL_Context.cpp)

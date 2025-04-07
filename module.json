@@ -1,0 +1,18 @@
+{
+  "module": {
+    "name": "Rift.Backend.OpenGL",
+    "category": "Graphical Backend",
+    "version": "0.1.1",
+    "author": "r0neko",
+    "description": "OpenGL Graphical Backend Support",
+    "homepage": "https://github.com/SpectralRift/Rift.Backend.OpenGL",
+    "type": "monolithic",
+    "cmakeProject": "Rift_Backend_OpenGL"
+  },
+  "dependencies": [
+    "Rift.Core.Runtime"
+  ],
+  "supportedTargets": [
+    "win32"
+  ]
+}
