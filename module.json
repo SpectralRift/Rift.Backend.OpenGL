@@ -13,6 +13,6 @@
     "Rift.Core.Runtime"
   ],
   "supportedTargets": [
-    "win32"
+    "all"
   ]
 }
